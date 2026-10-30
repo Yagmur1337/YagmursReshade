@@ -1,0 +1,61 @@
+name: Bug report
+description: Something does not work
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: input
+    id: game
+    attributes:
+      label: Target game
+      description: The game and integration you were using.
+      placeholder: Roblox
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Unishade version
+      description: Shown in the Unishade window.
+      placeholder: 0.1.1
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How did you install it?
+      options:
+        - Installer (Unishade-Setup.exe)
+        - Manual (Unishade.exe and the ReShade installer)
+        - Built from source
+    validations:
+      required: true
+  - type: input
+    id: reshade
+    attributes:
+      label: ReShade version
+      description: Listed in the Unishade window. Say whether it is the full add-on support build.
+      placeholder: 6.5.1 with full add-on support
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version
+      description: Run `winver`.
+      placeholder: Windows 11 24H2
+    validations:
+      required: true
+  - type: input
+    id: gpu
+    attributes:
+      label: Graphics card and driver version
+  - type: textarea
+    id: console
+    attributes:
+      label: Log
+      description: Paste `Unishade.log` from the host's folder. For installer problems, paste `%TEMP%\Unishade-Setup.log`.
+      render: text
