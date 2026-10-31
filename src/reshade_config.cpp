@@ -168,6 +168,10 @@ void PrepareReShadeConfig()
     std::error_code ec;
     std::filesystem::create_directories(cachePath, ec);
     ini.Set("GENERAL", "IntermediateCachePath", Utf8(cachePath.wstring()));
+    // Only compile the effects used by the active preset.
+    // Prevents compiling 100+ unused shaders, avoiding freezes, long startup lags, and application hangs.
+    ini.Set("GENERAL", "LoadOnlyEnabledEffects", "1");
+    ini.Set("GENERAL", "NoReloadOnInit", "0");
 
     if (!ini.Get("GENERAL", "PresetPath", value) || value.empty() || !std::filesystem::exists(ExeDirectory() / std::filesystem::u8path(value)))
     {

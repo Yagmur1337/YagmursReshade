@@ -357,28 +357,52 @@ void ShowFrames()
         return;
 
     const ULONGLONG now = GetTickCount64();
-    if (fresh || interactive || loop.presentPending || ReShadeLoadingEffects() || now < loop.fastUntil || now >= loop.nextRepeat)
+    const bool compiling = ReShadeLoadingEffects() || ReShadeCompilingEffects();
+    if (fresh || interactive || loop.presentPending || compiling || now < loop.fastUntil || now >= loop.nextRepeat)
     {
-        // A frame rate limit holds back whatever comes too soon, the menu included. A frame held back is shown with
-        // the next one, or on the next repeat when the game stops drawing.
-        int limit = FrameRateLimit();
-        if (limit <= 0)
+        if (compiling)
         {
-            // Follow game up to display refresh rate. If the game is running at 120, 400, or 4000 FPS,
-            // pacing presentation to the display refresh rate prevents GPU overload and queue starvation,
-            // while delivering the freshest frame smoothly at full monitor speed without any stutter.
-            limit = std::max(DisplayRefreshRate(), 60);
-        }
-        if (limit > 0)
-        {
-            using namespace std::chrono;
-            const nanoseconds time = FrameStatistics::Clock::now().time_since_epoch();
-            if (!loop.frameLimit.Allow(time.count(), nanoseconds(seconds(1)).count() / limit))
+            // During effect compilation, pace presentation to 30 FPS to avoid overloading the GPU and starving Windows messages.
+            if (now < loop.nextRepeat)
                 return;
+            loop.nextRepeat = now + 33;
+        }
+        else
+        {
+            // A frame rate limit holds back whatever comes too soon, the menu included. A frame held back is shown with
+            // the next one, or on the next repeat when the game stops drawing.
+            int limit = FrameRateLimit();
+            if (limit <= 0)
+            {
+                // Follow game up to display refresh rate. If the game is running at 120, 400, or 4000 FPS,
+                // pacing presentation to the display refresh rate prevents GPU overload and queue starvation,
+                // while delivering the freshest frame smoothly at full monitor speed without any stutter.
+                limit = std::max(DisplayRefreshRate(), 60);
+            }
+            if (limit > 0)
+            {
+                using namespace std::chrono;
+                const nanoseconds time = FrameStatistics::Clock::now().time_since_epoch();
+                if (!loop.frameLimit.Allow(time.count(), nanoseconds(seconds(1)).count() / limit))
+                    return;
+            }
+            loop.nextRepeat = now + kRepeatInterval;
         }
         PresentLatestFrame();
         loop.presentPending = false;
-        loop.nextRepeat = now + kRepeatInterval;
+
+        // Immediately service any pending UI messages after frame presentation
+        MSG msg;
+        while (PeekMessageW(&msg, nullptr, 0, 0, PM_REMOVE))
+        {
+            if (msg.message == WM_QUIT)
+            {
+                PostQuitMessage(static_cast<int>(msg.wParam));
+                return;
+            }
+            TranslateMessage(&msg);
+            DispatchMessageW(&msg);
+        }
     }
 }
 
@@ -399,6 +423,7 @@ int Run()
     LoadGames();
     PrepareReShadeConfig();
     CreateOverlayWindow();
+    LoadLibraryW((ExeDirectory() + L"nvngx.dll").c_str());
     InitAddon();
     InitMenu();
     g.frameEvent = CreateEventW(nullptr, FALSE, FALSE, nullptr);
@@ -537,6 +562,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int)
         return 0;
     }
 
+    DisableProcessWindowsGhosting();
     timeBeginPeriod(1);
     InitLog();
     int result = 1;

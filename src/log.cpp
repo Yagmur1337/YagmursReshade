@@ -321,7 +321,7 @@ void InitLog()
         Log(LogLevel::Warning, L"Could not create %ls (error %lu), so nothing is logged this time.", path.c_str(), error);
     else if (!rotated && rotationError != ERROR_FILE_NOT_FOUND)
         Log(LogLevel::Warning, L"Could not preserve the previous log (error %lu). Appending to it instead.", rotationError);
-    // YagmursReshade build timestamp
+    // YagmursReshade build timestamp v1.8.4
     Log(LogLevel::Info, L"Session started: pid=%lu, pointer_bits=%zu, processors=%lu, build=" __DATE__ " " __TIME__ ".", GetCurrentProcessId(), sizeof(void*) * 8,
         GetActiveProcessorCount(ALL_PROCESSOR_GROUPS));
     MEMORYSTATUSEX memory{ sizeof(memory) };
