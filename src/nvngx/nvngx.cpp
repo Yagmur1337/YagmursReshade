@@ -11,6 +11,7 @@ constexpr NVSDK_NGX_Result NVSDK_NGX_Result_Success = 0x00000001;
 constexpr NVSDK_NGX_Result NVSDK_NGX_Result_Fail = 0xBAD00000;
 
 struct NVSDK_NGX_Parameter {
+  virtual ~NVSDK_NGX_Parameter() = default;
   virtual void Set(const char *InName, unsigned long long InValue) = 0;
   virtual void Set(const char *InName, float InValue) = 0;
   virtual void Set(const char *InName, double InValue) = 0;
@@ -223,6 +224,35 @@ public:
 namespace {
 static NVSDK_NGX_Parameter_Impl g_capabilityParameters;
 
+static void LogNvngx(const char *fmt, ...) {
+  char buf[512];
+  va_list args;
+  va_start(args, fmt);
+  vsnprintf(buf, sizeof(buf), fmt, args);
+  va_end(args);
+  OutputDebugStringA(buf);
+
+  wchar_t modPath[MAX_PATH];
+  if (GetModuleFileNameW(nullptr, modPath, MAX_PATH)) {
+    wchar_t *lastSlash = wcsrchr(modPath, L'\\');
+    if (lastSlash) {
+      *(lastSlash + 1) = L'\0';
+      std::wstring logPath = std::wstring(modPath) + L"Unishade.log";
+      FILE *f = nullptr;
+      if (_wfopen_s(&f, logPath.c_str(), L"a") == 0 && f) {
+        SYSTEMTIME st;
+        GetLocalTime(&st);
+        fprintf(f,
+                "%04u-%02u-%02u %02u:%02u:%02u.%03u  nvngx    [tid=%lu]  %s\n",
+                st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond,
+                st.wMilliseconds, GetCurrentThreadId(), buf);
+        fflush(f);
+        fclose(f);
+      }
+    }
+  }
+}
+
 HMODULE GetRealNvngx() {
   static HMODULE hReal = []() -> HMODULE {
     wchar_t sysPath[MAX_PATH];
@@ -275,6 +305,8 @@ NVSDK_NGX_Result NVSDK_NGX_D3D11_Init(unsigned long long InApplicationId,
                                       ID3D11Device *InDevice,
                                       const void *InFeatureInfo,
                                       unsigned int InSDKVersion) {
+  LogNvngx("NVSDK_NGX_D3D11_Init: AppId=%llu, Device=%p, SDKVersion=0x%X",
+           InApplicationId, InDevice, InSDKVersion);
   if (HMODULE h = GetRealNvngx()) {
     using Fn = NVSDK_NGX_Result (*)(unsigned long long, const wchar_t *,
                                     ID3D11Device *, const void *, unsigned int);
@@ -306,6 +338,8 @@ NVSDK_NGX_Result
 NVSDK_NGX_D3D11_CreateFeature(ID3D11DeviceContext *InDevCtx, int InFeatureID,
                               const NVSDK_NGX_Parameter *InParameters,
                               void **OutHandle) {
+  LogNvngx("NVSDK_NGX_D3D11_CreateFeature: FeatureID=%d, DevCtx=%p",
+           InFeatureID, InDevCtx);
   if (HMODULE h = GetRealNvngx()) {
     using Fn = NVSDK_NGX_Result (*)(ID3D11DeviceContext *, int,
                                     const NVSDK_NGX_Parameter *, void **);
@@ -319,6 +353,7 @@ NVSDK_NGX_D3D11_CreateFeature(ID3D11DeviceContext *InDevCtx, int InFeatureID,
 }
 
 NVSDK_NGX_Result NVSDK_NGX_D3D11_ReleaseFeature(void *InHandle) {
+  LogNvngx("NVSDK_NGX_D3D11_ReleaseFeature: Handle=%p", InHandle);
   if (HMODULE h = GetRealNvngx()) {
     using Fn = NVSDK_NGX_Result (*)(void *);
     if (auto pfn = reinterpret_cast<Fn>(
@@ -409,6 +444,8 @@ NVSDK_NGX_Result NVSDK_NGX_D3D12_Init(unsigned long long InApplicationId,
                                       ID3D12Device *InDevice,
                                       const void *InFeatureInfo,
                                       unsigned int InSDKVersion) {
+  LogNvngx("NVSDK_NGX_D3D12_Init: AppId=%llu, Device=%p, SDKVersion=0x%X",
+           InApplicationId, InDevice, InSDKVersion);
   if (HMODULE h = GetRealNvngx()) {
     using Fn = NVSDK_NGX_Result (*)(unsigned long long, const wchar_t *,
                                     ID3D12Device *, const void *, unsigned int);

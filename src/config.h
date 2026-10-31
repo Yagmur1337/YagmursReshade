@@ -145,7 +145,7 @@ void RemovePerformanceGame(const std::wstring& game);
 constexpr int kSlowestFrameRate = 30;
 constexpr int kFastestFrameRate = 500;
 // The limits Settings offers, besides a custom one.
-inline constexpr int kFrameRates[] = { 0, 120, 60 };
+inline constexpr int kFrameRates[] = { 60, 120, 200, 400, 500, 0 };
 int FrameRateLimit();
 void SetFrameRateLimit(int fps);
 

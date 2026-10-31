@@ -2856,7 +2856,7 @@ void FrameRateRow()
     const int choice = ChoiceOf(kFrameRates, limit);
     const bool custom = m.customRatePicked || choice == kCustom;
     const int clicked = ChoiceRow("Frame rate", "The most frames a second Unishade shows. A lower limit leaves more of the GPU to the game.",
-                                  { "Follow game", "120 FPS", "60 FPS", "Custom" }, custom ? kCustom : choice);
+                                  { "60 FPS", "120 FPS", "200 FPS", "400 FPS", "500 FPS", "Follow game", "Custom" }, custom ? kCustom : choice);
     if (clicked == kCustom)
     {
         m.customRatePicked = true;

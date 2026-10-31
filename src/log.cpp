@@ -139,7 +139,7 @@ void Write(LogLevel level, bool notice, const wchar_t* format, va_list args)
         shared.lastThread = thread;
         shared.lastText = std::move(text);
     }
-    if (level == LogLevel::Error && file != INVALID_HANDLE_VALUE)
+    if (file != INVALID_HANDLE_VALUE)
         FlushFileBuffers(file);
     if (!notice && level != LogLevel::Warning && level != LogLevel::Error)
         return;
@@ -241,6 +241,57 @@ LONG WINAPI OnCrash(EXCEPTION_POINTERS* exception)
     return EXCEPTION_CONTINUE_SEARCH;
 }
 
+LONG WINAPI VectoredCrashHandler(EXCEPTION_POINTERS* exception)
+{
+    if (!exception || !exception->ExceptionRecord)
+        return EXCEPTION_CONTINUE_SEARCH;
+    const DWORD code = exception->ExceptionRecord->ExceptionCode;
+    if (code == EXCEPTION_ACCESS_VIOLATION ||
+        code == EXCEPTION_ILLEGAL_INSTRUCTION ||
+        code == EXCEPTION_STACK_OVERFLOW ||
+        code == EXCEPTION_PRIV_INSTRUCTION ||
+        code == EXCEPTION_INT_DIVIDE_BY_ZERO ||
+        code == EXCEPTION_IN_PAGE_ERROR ||
+        code == EXCEPTION_ARRAY_BOUNDS_EXCEEDED)
+    {
+        OnCrash(exception);
+    }
+    return EXCEPTION_CONTINUE_SEARCH;
+}
+
+void InvalidParameterHandler(const wchar_t* expression, const wchar_t* function, const wchar_t* sourceFile, unsigned int line, uintptr_t)
+{
+    const HANDLE out = OpenEmergencyLog();
+    EmergencyWrite(out, "\r\nFATAL: CRT Invalid parameter: %ls in %ls (%ls:%u), pid=%lu tid=%lu\r\n",
+                   expression ? expression : L"unknown",
+                   function ? function : L"unknown",
+                   sourceFile ? sourceFile : L"unknown", line, GetCurrentProcessId(), GetCurrentThreadId());
+    CONTEXT context{};
+    RtlCaptureContext(&context);
+    CrashStack(out, context);
+    if (out != INVALID_HANDLE_VALUE)
+    {
+        FlushFileBuffers(out);
+        CloseHandle(out);
+    }
+    ExitProcess(1);
+}
+
+void PureCallHandler()
+{
+    const HANDLE out = OpenEmergencyLog();
+    EmergencyWrite(out, "\r\nFATAL: Pure virtual function called, pid=%lu tid=%lu\r\n", GetCurrentProcessId(), GetCurrentThreadId());
+    CONTEXT context{};
+    RtlCaptureContext(&context);
+    CrashStack(out, context);
+    if (out != INVALID_HANDLE_VALUE)
+    {
+        FlushFileBuffers(out);
+        CloseHandle(out);
+    }
+    ExitProcess(1);
+}
+
 void OnAbort(int)
 {
     if (crashing.test_and_set())
@@ -301,7 +352,10 @@ void InitLog()
     if (file != INVALID_HANDLE_VALUE && GetFileSizeEx(file, &existing))
         shared.size = existing.QuadPart;
     SetUnhandledExceptionFilter(OnCrash);
+    AddVectoredExceptionHandler(1, VectoredCrashHandler);
     std::signal(SIGABRT, OnAbort);
+    _set_invalid_parameter_handler(InvalidParameterHandler);
+    _set_purecall_handler(PureCallHandler);
     InitThreadLog();
 
     // GetVersionEx reports Windows 8 to programs without a compatibility manifest.

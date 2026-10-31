@@ -85,7 +85,7 @@ enum class PerformanceSetting
 };
 
 // The choices Performance offers, besides a custom frame rate between the slowest and fastest.
-inline constexpr int kFrameRates[] = { 0, 120, 60 };
+inline constexpr int kFrameRates[] = { 60, 120, 200, 400, 500, 0 };
 inline constexpr int kEffectResolutions[] = { 100, 75, 50 };
 inline constexpr int kDepthSizes[] = { 924, 518, 392, 266 };
 inline constexpr int kSlowestFrameRate = 30;

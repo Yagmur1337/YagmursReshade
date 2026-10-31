@@ -475,14 +475,21 @@ void PresentLatestFrame() {
   // Depth is estimated from SDR, so an HDR frame is read once it was drawn as
   // SDR.
   UpdateDepth(g.hdrWhiteLevel ? backBuffer.get() : surface.get());
+  static bool firstFrameLogged = false;
   const HRESULT presented = g.swapchain->Present(0, 0);
-  if (FAILED(presented))
+  if (!firstFrameLogged && SUCCEEDED(presented)) {
+    firstFrameLogged = true;
+    Log(LogLevel::Ok, L"First frame presented successfully: %ux%u (source=%ux%u).", width, height, size.Width, size.Height);
+  }
+  if (FAILED(presented)) {
     Log(LogLevel::Error,
         L"Swapchain Present failed: 0x%08X, device_reason=0x%08X, "
         L"output=%ux%u, source=%ux%u, source_format=%u.",
         static_cast<unsigned>(presented),
         static_cast<unsigned>(g.device->GetDeviceRemovedReason()), width,
         height, size.Width, size.Height, size.Format);
+    FlushLog();
+  }
   if (DeviceLost(presented))
     winrt::throw_hresult(presented);
   const auto finished = FrameStatistics::Clock::now();

@@ -416,7 +416,7 @@ void RemovePerformanceGame(const std::wstring& game)
 
 int FrameRateLimit()
 {
-    return CachedNumber(frameRateLimit, L"FrameRateLimit", 0, ValidFrameRate);
+    return CachedNumber(frameRateLimit, L"FrameRateLimit", 60, ValidFrameRate);
 }
 
 void SetFrameRateLimit(int fps)
@@ -446,7 +446,7 @@ void SetDepthSize(int size)
 
 int FrameRateLimit(const std::wstring& game)
 {
-    return ReadNumber(game, L"FrameRateLimit", 0, ValidFrameRate);
+    return ReadNumber(game, L"FrameRateLimit", 60, ValidFrameRate);
 }
 
 void SetFrameRateLimit(const std::wstring& game, int fps)

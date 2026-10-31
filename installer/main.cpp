@@ -157,6 +157,7 @@ struct App
     bool presets = true;
     bool depth = false;
     bool dlss5 = false;
+    int targetFps = 60;
 
     Task releaseTask;
     std::atomic<bool> releaseCancel = false;
@@ -303,6 +304,7 @@ void StartInstall()
     options.presets = app.presets;
     options.depth = app.depth;
     options.dlss5 = app.dlss5;
+    options.targetFps = app.targetFps;
     app.progress = std::make_unique<Progress>();
     app.notes.clear();
     app.installTask.Start([options, release = *app.release] { Install(options, release, *app.progress); });
@@ -773,6 +775,38 @@ void AddonsPage()
              "DLSS5 through RenoDX's ReShade add-on. Compatible with all graphics cards. 168 MB download.",
              CardKind::Toggle, app.dlss5))
         app.dlss5 = !app.dlss5;
+    Spacing(8);
+    Text("Target frame rate limit", kText, 15, ui.semibold);
+    Text("Locks presentation rate to keep performance smooth and eliminate stutters or crashes.", kDim, 13);
+    Spacing(4);
+    const struct { int fps; const char* label; } fpsOptions[] = {
+        { 60, "60 FPS (Default)" },
+        { 120, "120 FPS" },
+        { 200, "200 FPS" },
+        { 400, "400 FPS" },
+        { 500, "500 FPS" },
+        { 0, "Follow game" },
+    };
+    for (size_t i = 0; i < std::size(fpsOptions); ++i)
+    {
+        const bool active = app.targetFps == fpsOptions[i].fps;
+        ImGui::PushID(static_cast<int>(i));
+        ImGui::PushStyleColor(ImGuiCol_Button, active ? kAccent : kCard);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, active ? kAccentHover : kCardHover);
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, kBorder);
+        ImGui::PushStyleColor(ImGuiCol_Text, active ? 0xFFFFFFFF : kText);
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, S(6));
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(S(10), S(5)));
+        if (ImGui::Button(fpsOptions[i].label))
+            app.targetFps = fpsOptions[i].fps;
+        if (ImGui::IsItemHovered())
+            ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+        ImGui::PopStyleVar(2);
+        ImGui::PopStyleColor(4);
+        ImGui::PopID();
+        if (i + 1 < std::size(fpsOptions))
+            ImGui::SameLine(0, S(6));
+    }
 }
 
 void LicensePage()

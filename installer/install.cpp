@@ -1001,6 +1001,11 @@ void Commit(const fs::path &files, const InstallOptions &options,
     if (options.reshade && hadReShadeIni)
       FixReShadeIni(directory / L"ReShade.ini", false);
 
+    const std::wstring hostIni = (directory / L"RobloxShadeHost.ini").wstring();
+    const std::wstring fpsStr = std::to_wstring(options.targetFps);
+    WritePrivateProfileStringW(L"Performance", L"FrameRateLimit", fpsStr.c_str(), hostIni.c_str());
+    WritePrivateProfileStringW(L"Performance.Roblox", L"FrameRateLimit", fpsStr.c_str(), hostIni.c_str());
+
     // Inno Setup's uninstaller from earlier versions of Setup.
     RemoveFile(directory / L"unins000.exe");
     RemoveFile(directory / L"unins000.dat");

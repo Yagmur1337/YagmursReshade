@@ -25,6 +25,7 @@ struct InstallOptions
     bool dlss5 = false;
     // Leaves out the Start menu shortcuts, the entry in Windows' app list and the copy of Setup.
     bool portable = false;
+    int targetFps = 60;
 };
 
 // Download locations. Tests point them elsewhere from the command line, and may give a local file for the effect

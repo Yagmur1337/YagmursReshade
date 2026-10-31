@@ -35,8 +35,8 @@ constexpr ULONGLONG kSearchInterval = 1000;
 // A capture that fails to start is tried again after this, doubling each time up to kMaxCaptureRetry.
 constexpr ULONGLONG kFirstCaptureRetry = 2000;
 constexpr ULONGLONG kMaxCaptureRetry = 30000;
-// The same frame is shown again this often, so toasts and hints still change over a paused game.
-constexpr ULONGLONG kRepeatInterval = 100;
+// The same frame is shown again this often, so toasts and hints still change smoothly at 60 FPS over a paused game.
+constexpr ULONGLONG kRepeatInterval = 16;
 // After a shortcut, frames are shown on every wake-up for this long, so what it changed shows right away.
 constexpr ULONGLONG kShortcutResponse = 1000;
 // Recovery from a lost graphics device gives up after this many losses within kLossWindow, well before Windows stops
@@ -362,10 +362,10 @@ void ShowFrames()
     {
         if (compiling)
         {
-            // During effect compilation, pace presentation to 30 FPS to avoid overloading the GPU and starving Windows messages.
+            // During effect compilation, pace presentation to 60 FPS to avoid overloading the GPU while keeping UI smooth.
             if (now < loop.nextRepeat)
                 return;
-            loop.nextRepeat = now + 33;
+            loop.nextRepeat = now + 16;
         }
         else
         {
@@ -408,7 +408,7 @@ void ShowFrames()
 
 int Run()
 {
-    Log(LogLevel::Info, L"Checking Windows Graphics Capture support.");
+    Log(LogLevel::Info, L"[INIT 1/11] Checking Windows Graphics Capture support...");
     if (!GraphicsCaptureSession::IsSupported())
     {
         const wchar_t* message = L"Windows Graphics Capture is not available, and Unishade needs it to copy the game's picture. "
@@ -419,20 +419,30 @@ int Run()
     }
     RequestBorderlessCapture();
 
+    Log(LogLevel::Info, L"[INIT 2/11] Loading input hotkeys...");
     LoadInputHotkeys();
+    Log(LogLevel::Info, L"[INIT 3/11] Loading saved games...");
     LoadGames();
+    Log(LogLevel::Info, L"[INIT 4/11] Preparing ReShade config...");
     PrepareReShadeConfig();
+    Log(LogLevel::Info, L"[INIT 5/11] Creating overlay window...");
     CreateOverlayWindow();
+    Log(LogLevel::Info, L"[INIT 6/11] Loading nvngx virtual bridge...");
     LoadLibraryW((ExeDirectory() + L"nvngx.dll").c_str());
+    Log(LogLevel::Info, L"[INIT 7/11] Initializing ReShade add-on...");
     InitAddon();
+    Log(LogLevel::Info, L"[INIT 8/11] Initializing ReShade menu...");
     InitMenu();
     g.frameEvent = CreateEventW(nullptr, FALSE, FALSE, nullptr);
     winrt::check_bool(g.frameEvent != nullptr);
+    Log(LogLevel::Info, L"[INIT 9/11] Creating D3D11 graphics device...");
     CreateDevice();
+    Log(LogLevel::Info, L"[INIT 10/11] Checking setup & optional add-ons...");
     CheckSetup();
     InitDepth();
     RegisterHotkeys();
     CheckForUpdate();
+    Log(LogLevel::Info, L"[INIT 11/11] Creating launcher & message loop ready.");
     CreateLauncher();
     Log(LogLevel::Info, L"Waiting for a supported game...");
 
