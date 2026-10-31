@@ -175,13 +175,19 @@ void DrawFrame(ID3D11Texture2D *frame, const D3D11_TEXTURE2D_DESC &size,
   g.context->OMSetRenderTargets(0, nullptr, nullptr);
 }
 void CloseCapture() {
-  g.frameArrived.revoke();
+  Direct3D11CaptureFrame dropArrived{nullptr};
+  Direct3D11CaptureFrame dropLatest{nullptr};
   {
     const std::lock_guard lock(g.frameMutex);
     g.takingFrames = false;
-    g.arrivedFrame = nullptr;
+    dropArrived = std::move(g.arrivedFrame);
   }
-  g.latestFrame = nullptr;
+  dropLatest = std::move(g.latestFrame);
+  // Frames are dropped outside g.frameMutex to prevent lock-inversion deadlock with GraphicsCapture
+  dropArrived = nullptr;
+  dropLatest = nullptr;
+
+  g.frameArrived.revoke();
   if (g.session)
     g.session.Close();
   g.session = nullptr;
@@ -319,6 +325,11 @@ void StartCapture(HWND target) {
       winrt::auto_revoke, [](const Direct3D11CaptureFramePool &pool, auto &&) {
         InitThreadLog();
         try {
+          if (captureIdle) {
+            // When capture is idle, drain frames without queuing or signaling
+            while (Direct3D11CaptureFrame frame = pool.TryGetNextFrame()) {}
+            return;
+          }
           Direct3D11CaptureFrame newestFrame{nullptr};
           uint64_t count = 0;
           while (Direct3D11CaptureFrame frame = pool.TryGetNextFrame()) {
@@ -327,10 +338,18 @@ void StartCapture(HWND target) {
           }
           if (count > 0) {
             g.capturedFrames.fetch_add(count, std::memory_order_relaxed);
-            // The frame it replaces goes back to the pool.
-            const std::lock_guard lock(g.frameMutex);
-            if (g.takingFrames)
-              g.arrivedFrame = std::move(newestFrame);
+            Direct3D11CaptureFrame dropFrame{nullptr};
+            {
+              const std::lock_guard lock(g.frameMutex);
+              if (g.takingFrames) {
+                dropFrame = std::move(g.arrivedFrame);
+                g.arrivedFrame = std::move(newestFrame);
+              } else {
+                dropFrame = std::move(newestFrame);
+              }
+            }
+            // dropFrame is destroyed outside g.frameMutex to guarantee no COM lock-inversion
+            dropFrame = nullptr;
           }
         } catch (const winrt::hresult_error &e) {
           bool taking = false;
@@ -391,14 +410,10 @@ void SetCaptureIdle(bool idle) {
   if (!g.target || captureIdle == idle)
     return;
   Log(LogLevel::Info, L"Capture idle=%d, hwnd=%p.", idle, g.target);
+  captureIdle = idle;
   if (ApiInformation::IsPropertyPresent(kSessionClass, L"MinUpdateInterval")) {
-    captureIdle = idle;
     g.session.MinUpdateInterval(std::chrono::milliseconds(idle ? 200 : 1));
-  } else if (idle) {
-    captureIdle = true;
-    CloseCapture();
-  } else
-    StartCapture(g.target);
+  }
 }
 
 void PresentLatestFrame() {

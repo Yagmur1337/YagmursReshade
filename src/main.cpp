@@ -321,26 +321,33 @@ int DisplayRefreshRate()
 void ShowFrames()
 {
     // Only the newest frame matters. The capture worker keeps it, and the one shown before goes back to the pool.
+    Direct3D11CaptureFrame dropOld{ nullptr };
     bool fresh = false;
     {
         const std::lock_guard lock(g.frameMutex);
         if (g.arrivedFrame)
         {
+            dropOld = std::move(g.latestFrame);
             g.latestFrame = std::move(g.arrivedFrame);
             fresh = true;
         }
     }
+    // Destroy previous frame outside g.frameMutex to guarantee no COM lock-inversion
+    dropOld = nullptr;
 
     if (g.latestFrame)
     {
         SizeInt32 size = g.latestFrame.ContentSize();
         if ((size.Width != g.poolSize.Width || size.Height != g.poolSize.Height) && size.Width > 0 && size.Height > 0)
         {
-            g.latestFrame = nullptr;
+            Direct3D11CaptureFrame dropLatest = std::move(g.latestFrame);
+            Direct3D11CaptureFrame dropArrived{ nullptr };
             {
                 const std::lock_guard lock(g.frameMutex);
-                g.arrivedFrame = nullptr;
+                dropArrived = std::move(g.arrivedFrame);
             }
+            dropLatest = nullptr;
+            dropArrived = nullptr;
             g.poolSize = size;
             g.pool.Recreate(g.captureDevice, g.hdrWhiteLevel ? kHdrPixelFormat : kPixelFormat, kFrameBuffers, size);
             Log(LogLevel::Info, L"%ls resized to %dx%d", g.activeGame->name.c_str(), size.Width, size.Height);
@@ -523,24 +530,39 @@ int Run()
                 else
                 {
                     Log(LogLevel::Warning, L"Frame capture/presentation glitch: %ls (0x%08X)", e.message().c_str(), static_cast<unsigned>(e.code()));
-                    const std::lock_guard lock(g.frameMutex);
-                    g.latestFrame = nullptr;
-                    g.arrivedFrame = nullptr;
+                    Direct3D11CaptureFrame dropLatest = std::move(g.latestFrame);
+                    Direct3D11CaptureFrame dropArrived{ nullptr };
+                    {
+                        const std::lock_guard lock(g.frameMutex);
+                        dropArrived = std::move(g.arrivedFrame);
+                    }
+                    dropLatest = nullptr;
+                    dropArrived = nullptr;
                 }
             }
             catch (const std::exception& e)
             {
                 Log(LogLevel::Warning, L"Frame presentation exception: %hs", e.what());
-                const std::lock_guard lock(g.frameMutex);
-                g.latestFrame = nullptr;
-                g.arrivedFrame = nullptr;
+                Direct3D11CaptureFrame dropLatest = std::move(g.latestFrame);
+                Direct3D11CaptureFrame dropArrived{ nullptr };
+                {
+                    const std::lock_guard lock(g.frameMutex);
+                    dropArrived = std::move(g.arrivedFrame);
+                }
+                dropLatest = nullptr;
+                dropArrived = nullptr;
             }
             catch (...)
             {
                 Log(LogLevel::Warning, L"Unknown frame presentation exception");
-                const std::lock_guard lock(g.frameMutex);
-                g.latestFrame = nullptr;
-                g.arrivedFrame = nullptr;
+                Direct3D11CaptureFrame dropLatest = std::move(g.latestFrame);
+                Direct3D11CaptureFrame dropArrived{ nullptr };
+                {
+                    const std::lock_guard lock(g.frameMutex);
+                    dropArrived = std::move(g.arrivedFrame);
+                }
+                dropLatest = nullptr;
+                dropArrived = nullptr;
             }
         }
 

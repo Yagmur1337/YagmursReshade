@@ -446,6 +446,12 @@ Pixels MipmapPixels(IWICImagingFactory* factory, IWICBitmapDecoder* decoder, UIN
 
 Pixels LogoPixels(UINT size)
 {
+    static std::mutex logoMutex;
+    static Pixels cached;
+    std::lock_guard lock(logoMutex);
+    if (cached && !cached->empty())
+        return cached;
+
     const HRSRC info = FindResourceW(nullptr, MAKEINTRESOURCEW(IDR_LOGO), RT_RCDATA);
     const HGLOBAL resource = info ? LoadResource(nullptr, info) : nullptr;
     winrt::com_ptr<IWICImagingFactory> factory;
@@ -456,7 +462,8 @@ Pixels LogoPixels(UINT size)
         FAILED(stream->InitializeFromMemory(static_cast<BYTE*>(LockResource(resource)), SizeofResource(nullptr, info))) ||
         FAILED(factory->CreateDecoderFromStream(stream.get(), nullptr, WICDecodeMetadataCacheOnLoad, decoder.put())))
         return std::make_shared<std::vector<BYTE>>();
-    return MipmapPixels(factory.get(), decoder.get(), size);
+    cached = MipmapPixels(factory.get(), decoder.get(), size);
+    return cached;
 }
 
 Pixels ImagePixels(const fs::path& file, UINT size)
@@ -3741,11 +3748,17 @@ void OnOverlay(effect_runtime* runtime)
 {
     if (runtime != m.runtime)
         return;
+    static bool prevMenu = false;
     // The menu's look only applies to its own windows, so ReShade's is restored after, also after an error.
     ImGuiStyle& style = ImGui::GetStyle();
     const ImGuiStyle saved = style;
     Guarded([] {
         const bool menu = g.editMode && !ReShadeMenuOpen();
+        if (menu != prevMenu)
+        {
+            prevMenu = menu;
+            Log(LogLevel::Info, L"Overlay menu drawing state: menu=%d, editMode=%d", menu, g.editMode);
+        }
         UpdateFrame(menu);
         DrawOverlay(menu);
     });
@@ -3839,6 +3852,7 @@ void InitMenu()
 {
     if (!AddonRegistered())
         return;
+    m.logoPixels = LogoPixels(kHeaderLogoSize);
     reshade::register_event<reshade::addon_event::init_effect_runtime>(
         [](effect_runtime* runtime) { Guarded([runtime] { OnInitRuntime(runtime); }); });
     reshade::register_event<reshade::addon_event::destroy_effect_runtime>(
