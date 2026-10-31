@@ -160,6 +160,7 @@ void UpdateOverlay()
     // A game that is visible behind other windows keeps its effects when the user asked for that.
     const bool behind = !inFront && g.target && KeepEffectsVisible() && !IsCloaked(g.target);
     bool visible = g.captureEnabled && g.target && IsWindowVisible(g.target) && !IsIconic(g.target) && (inFront || behind) &&
+                   !IsHungAppWindow(g.target) &&
                    SUCCEEDED(DwmGetWindowAttribute(g.target, DWMWA_EXTENDED_FRAME_BOUNDS, &bounds, sizeof(bounds)));
 
     if (!visible)

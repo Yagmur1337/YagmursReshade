@@ -5,3 +5,4 @@
 #define IDR_CREDITS 103
 #define IDR_LOGO 104
 #define IDR_UI 105
+#define IDR_NVNGX 106

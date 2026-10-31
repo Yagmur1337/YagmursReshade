@@ -1163,6 +1163,7 @@ bool Install(const InstallOptions &options, const ReShadeRelease &release,
 
   WriteFile(files / L"Unishade.exe", Resource(IDR_HOST));
   WriteFile(files / L"UnishadeUi.dll", Resource(IDR_UI));
+  WriteFile(files / L"nvngx.dll", Resource(IDR_NVNGX));
   WriteFile(files / L"LICENSE", Resource(IDR_LICENSE));
   WriteFile(files / L"CREDITS.txt", Resource(IDR_CREDITS));
   bool complete = true;

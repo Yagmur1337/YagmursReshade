@@ -1,0 +1,25 @@
+LIBRARY nvngx.dll
+EXPORTS
+    NVSDK_NGX_D3D11_AllocateParameters
+    NVSDK_NGX_D3D11_CreateFeature
+    NVSDK_NGX_D3D11_EvaluateFeature
+    NVSDK_NGX_D3D11_EvaluateFeature_C
+    NVSDK_NGX_D3D11_GetCapabilityParameters
+    NVSDK_NGX_D3D11_GetParameters
+    NVSDK_NGX_D3D11_Init
+    NVSDK_NGX_D3D11_Init_with_ProjectID
+    NVSDK_NGX_D3D11_ReleaseFeature
+    NVSDK_NGX_D3D11_Shutdown1
+    NVSDK_NGX_D3D12_AllocateParameters
+    NVSDK_NGX_D3D12_CreateFeature
+    NVSDK_NGX_D3D12_DestroyParameters
+    NVSDK_NGX_D3D12_EvaluateFeature
+    NVSDK_NGX_D3D12_EvaluateFeature_C
+    NVSDK_NGX_D3D12_GetCapabilityParameters
+    NVSDK_NGX_D3D12_GetParameters
+    NVSDK_NGX_D3D12_Init
+    NVSDK_NGX_D3D12_Init_Ext
+    NVSDK_NGX_D3D12_Init_with_ProjectID
+    NVSDK_NGX_D3D12_ReleaseFeature
+    NVSDK_NGX_D3D12_Shutdown1
+

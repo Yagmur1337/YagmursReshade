@@ -153,6 +153,14 @@ set_source_files_properties(${UI_SOURCES} PROPERTIES COMPILE_OPTIONS "/W4;/permi
 target_link_libraries(UnishadeUi PRIVATE dwmapi imm32)
 add_dependencies(Unishade UnishadeUi)
 
+add_library(nvngx SHARED
+    src/nvngx/nvngx.cpp
+    src/nvngx/nvngx.def)
+target_compile_definitions(nvngx PRIVATE UNICODE _UNICODE WIN32_LEAN_AND_MEAN NOMINMAX)
+target_compile_options(nvngx PRIVATE /W4 /permissive- /EHsc)
+target_link_libraries(nvngx PRIVATE d3d11 d3d12 dxgi)
+add_dependencies(Unishade nvngx)
+
 # Built on request, like the Inno Setup installer it replaces: cmake --build build --config Release --target installer
 add_executable(installer WIN32 EXCLUDE_FROM_ALL
     installer/main.cpp
@@ -172,7 +180,7 @@ target_link_libraries(installer PRIVATE setup_libraries d3d11 dxgi d3dcompiler d
 # that are not KnownDLLs are delay-loaded, so they load after wWinMain has limited the search to System32.
 target_link_options(installer PRIVATE /DEPENDENTLOADFLAG:0x800 /DELAYLOAD:d3d11.dll /DELAYLOAD:d3dcompiler_47.dll
     /DELAYLOAD:dwmapi.dll /DELAYLOAD:winhttp.dll /DELAYLOAD:bcrypt.dll)
-add_dependencies(installer Unishade UnishadeUi)
+add_dependencies(installer Unishade UnishadeUi nvngx)
 # The generator expression keeps multi-config generators from adding a Release folder.
 set_target_properties(installer PROPERTIES
     OUTPUT_NAME "Unishade-Setup-${PROJECT_VERSION}"

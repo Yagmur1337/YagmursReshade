@@ -124,7 +124,13 @@ void PrepareReShadeConfig()
     input.close();
 
     std::string value;
-    // The menu is part of the add-on, and ReShade's add-on list is out of reach without it.
+    // Restore renodx-dlss addon if disabled, so all features run on all GPUs (AMD, Intel, NVIDIA).
+    std::error_code fsEc;
+    const auto dlssFile = ExeDirectory() + L"renodx-dlss.addon64";
+    const auto dlssDisabled = ExeDirectory() + L"renodx-dlss.addon64.disabled";
+    if (std::filesystem::exists(dlssDisabled) && !std::filesystem::exists(dlssFile))
+        std::filesystem::rename(dlssDisabled, dlssFile, fsEc);
+
     if (ini.Get("ADDON", "DisabledAddons", value))
     {
         std::string kept;
@@ -134,41 +140,11 @@ void PrepareReShadeConfig()
             const std::string name = value.substr(start, end - start);
             start = end + 1;
             if (!name.empty() && name != "Unishade" && name.rfind("Unishade@", 0) != 0 &&
-                name != "RobloxShadeHost" && name.rfind("RobloxShadeHost@", 0) != 0)
+                name != "RobloxShadeHost" && name.rfind("RobloxShadeHost@", 0) != 0 &&
+                name != "renodx-dlss")
                 kept += (kept.empty() ? "" : ",") + name;
         }
-        if (kept != value)
-            ini.Set("ADDON", "DisabledAddons", kept);
-    }
-    const UINT vendorId = DetectGpuVendor();
-    const bool isNvidia = (vendorId == 0x10DE);
-
-    std::error_code fsEc;
-    const auto dlssFile = ExeDirectory() + L"renodx-dlss.addon64";
-    const auto dlssDisabled = ExeDirectory() + L"renodx-dlss.addon64.disabled";
-    if (!isNvidia)
-    {
-        // Non-NVIDIA GPUs (AMD Radeon, Intel, etc.) cannot run NVIDIA DLSS/NVNGX and will crash.
-        // Automatically disable renodx-dlss so all effects run stably on any GPU.
-        if (std::filesystem::exists(dlssFile))
-            std::filesystem::rename(dlssFile, dlssDisabled, fsEc);
-
-        std::string disabledList;
-        if (ini.Get("ADDON", "DisabledAddons", disabledList))
-        {
-            if (disabledList.find("renodx-dlss") == std::string::npos)
-                ini.Set("ADDON", "DisabledAddons", disabledList.empty() ? "renodx-dlss" : disabledList + ",renodx-dlss");
-        }
-        else
-        {
-            ini.Set("ADDON", "DisabledAddons", "renodx-dlss");
-        }
-    }
-    else
-    {
-        // On NVIDIA GPUs, restore DLSS addon if present.
-        if (std::filesystem::exists(dlssDisabled) && !std::filesystem::exists(dlssFile))
-            std::filesystem::rename(dlssDisabled, dlssFile, fsEc);
+        ini.Set("ADDON", "DisabledAddons", kept);
     }
 
     if (!ini.Get("OVERLAY", "TutorialProgress", value) || value != "4")

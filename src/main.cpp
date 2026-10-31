@@ -98,7 +98,8 @@ void LogState()
 
 void ShowError(const std::wstring& message)
 {
-    MessageBoxW(g.launcher, (message + L"\n\nMore details are in " + LogPath() + L".").c_str(), L"Unishade", MB_ICONERROR);
+    Log(LogLevel::Error, L"ShowError: %ls", message.c_str());
+    MessageBoxW(nullptr, (message + L"\n\nMore details are in " + LogPath() + L".").c_str(), L"Unishade", MB_ICONERROR | MB_TASKMODAL | MB_SETFOREGROUND);
 }
 
 // A damaged list is kept beside it, since the next change to the list replaces the file.
@@ -480,9 +481,31 @@ int Run()
             }
             catch (const winrt::hresult_error& e)
             {
-                if (!DeviceLost(e.code()))
-                    throw;
-                OnDeviceLost(e.code());
+                if (DeviceLost(e.code()))
+                {
+                    OnDeviceLost(e.code());
+                }
+                else
+                {
+                    Log(LogLevel::Warning, L"Frame capture/presentation glitch: %ls (0x%08X)", e.message().c_str(), static_cast<unsigned>(e.code()));
+                    const std::lock_guard lock(g.frameMutex);
+                    g.latestFrame = nullptr;
+                    g.arrivedFrame = nullptr;
+                }
+            }
+            catch (const std::exception& e)
+            {
+                Log(LogLevel::Warning, L"Frame presentation exception: %hs", e.what());
+                const std::lock_guard lock(g.frameMutex);
+                g.latestFrame = nullptr;
+                g.arrivedFrame = nullptr;
+            }
+            catch (...)
+            {
+                Log(LogLevel::Warning, L"Unknown frame presentation exception");
+                const std::lock_guard lock(g.frameMutex);
+                g.latestFrame = nullptr;
+                g.arrivedFrame = nullptr;
             }
         }
 
