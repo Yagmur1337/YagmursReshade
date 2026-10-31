@@ -59,9 +59,14 @@ void OnReloadedEffects(reshade::api::effect_runtime *reloaded) {
       [](reshade::api::effect_runtime *, reshade::api::effect_technique,
          void *found) { ++*static_cast<size_t *>(found); },
       &count);
-  compiling = !count;
-  if (!compiling)
+  if (count > 0) {
+    compiling = false;
     loadingSince = 0;
+  } else {
+    compiling = true;
+    if (!loadingSince)
+      loadingSince = GetTickCount64();
+  }
   Log(LogLevel::Info,
       L"ReShade effects reload: runtime=%p, techniques=%zu, compiling=%d, "
       L"effects_enabled=%d.",
@@ -145,10 +150,20 @@ void OpenReShadeMenu(bool open) {
 bool ReShadeMenuOpen() { return reshadeMenuOpen; }
 
 bool ReShadeLoadingEffects() {
-  return loadingSince && GetTickCount64() - loadingSince < kLoadingLimit;
+  if (loadingSince && GetTickCount64() - loadingSince >= kLoadingLimit) {
+    loadingSince = 0;
+    compiling = false;
+  }
+  return loadingSince != 0;
 }
 
-bool ReShadeCompilingEffects() { return compiling; }
+bool ReShadeCompilingEffects() {
+  if (compiling && loadingSince && GetTickCount64() - loadingSince >= kLoadingLimit) {
+    compiling = false;
+    loadingSince = 0;
+  }
+  return compiling;
+}
 
 void ShutdownAddon() {
   if (registered)

@@ -396,8 +396,7 @@ int Run()
 
     LoadInputHotkeys();
     LoadGames();
-    if (ReShadeLoaded())
-        PrepareReShadeConfig();
+    PrepareReShadeConfig();
     CreateOverlayWindow();
     InitAddon();
     InitMenu();
@@ -530,6 +529,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int)
         Log(LogLevel::Error, L"Unishade stopped: %ls (0x%08X)", e.message().c_str(), static_cast<unsigned>(e.code()));
         LogState();
         LogStackTrace();
+        FlushLog();
         ShowError(L"Unishade stopped because of an error: " + std::wstring(e.message()));
     }
     catch (const std::exception& e)
@@ -537,12 +537,14 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int)
         Log(LogLevel::Error, L"Unishade stopped: %hs", e.what());
         LogState();
         LogStackTrace();
+        FlushLog();
         ShowError(L"Unishade stopped because of an error.");
     }
     catch (...)
     {
         Log(LogLevel::Error, L"Unishade stopped because of an unknown exception.");
         LogStackTrace();
+        FlushLog();
         ShowError(L"Unishade stopped because of an error.");
     }
     // Removes the tray icon after an error. After a normal exit the launcher is already gone.

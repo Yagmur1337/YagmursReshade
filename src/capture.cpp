@@ -483,7 +483,8 @@ void PresentLatestFrame() {
         static_cast<unsigned>(presented),
         static_cast<unsigned>(g.device->GetDeviceRemovedReason()), width,
         height, size.Width, size.Height, size.Format);
-  winrt::check_hresult(presented);
+  if (DeviceLost(presented))
+    winrt::throw_hresult(presented);
   const auto finished = FrameStatistics::Clock::now();
   g.frameStatistics.RecordPresent(
       frameTimestamp,

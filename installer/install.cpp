@@ -341,11 +341,17 @@ void FixReShadeIni(const fs::path &path, bool addPresetPath) {
       changed = true;
     }
     result += content + ending;
-    if (addPresetPath && content.find("[GENERAL]") != std::string::npos) {
-      result += (ending.empty() ? newline : "") +
-                "PresetPath=.\\presets\\ReShadePreset.ini" + newline +
-                "LoadOnlyEnabledEffects=1" + newline +
+    if (content.find("[GENERAL]") != std::string::npos) {
+      result += (ending.empty() ? newline : "");
+      if (addPresetPath)
+        result += "PresetPath=.\\presets\\GenericPreset1.ini" + newline;
+      result += "LoadOnlyEnabledEffects=1" + newline +
                 "IntermediateCachePath=.\\IntermediateCache" + newline;
+      changed = true;
+    }
+    if (content.find("[APP]") != std::string::npos) {
+      result += (ending.empty() ? newline : "") +
+                "LoadOnlyEnabledEffects=1" + newline;
       changed = true;
     }
   }

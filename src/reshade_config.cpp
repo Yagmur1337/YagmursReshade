@@ -133,6 +133,12 @@ void PrepareReShadeConfig()
     std::error_code ec;
     std::filesystem::create_directories(cachePath, ec);
     ini.Set("GENERAL", "IntermediateCachePath", Utf8(cachePath.wstring()));
+
+    if (!ini.Get("GENERAL", "PresetPath", value) || value.empty() || !std::filesystem::exists(ExeDirectory() / std::filesystem::u8path(value)))
+    {
+        if (std::filesystem::exists(ExeDirectory() + L"presets\\GenericPreset1.ini"))
+            ini.Set("GENERAL", "PresetPath", ".\\presets\\GenericPreset1.ini");
+    }
     if ((!ini.Get("STYLE", "Font", value) || value.empty() || _stricmp(value.c_str(), "ProggyClean.ttf") == 0) && !NeedsReShadeFont())
     {
         wchar_t windows[MAX_PATH]{};
