@@ -368,6 +368,13 @@ void ShowFrames()
             // while delivering the freshest frame smoothly at full monitor speed without any stutter.
             limit = std::max(DisplayRefreshRate(), 60);
         }
+        if (ReShadeCompilingEffects() || ReShadeLoadingEffects())
+        {
+            // While ReShade is compiling shaders on background threads, pace presentations
+            // to 15 FPS so compiler worker threads don't fight with the presentation loop for D3D11 locks.
+            // This prevents CPU/GPU lock contention, UI freezes, and Windows Application Hang.
+            limit = 15;
+        }
         if (limit > 0)
         {
             using namespace std::chrono;

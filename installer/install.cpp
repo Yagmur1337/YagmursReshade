@@ -333,10 +333,14 @@ void FixReShadeIni(const fs::path &path, bool addPresetPath) {
 
     std::string content = line.substr(0, line.find_last_not_of("\r\n") + 1);
     const std::string ending = line.substr(content.size());
-    if ((content.rfind("EffectSearchPaths=", 0) == 0 ||
-         content.rfind("TextureSearchPaths=", 0) == 0) &&
-        content.size() > 6 &&
-        content.compare(content.size() - 6, 6, "\\**\\**") == 0) {
+    if (content.rfind("EffectSearchPaths=", 0) == 0) {
+      content = "EffectSearchPaths=.\\reshade-shaders\\Shaders,"
+                ".\\reshade-shaders\\Shaders\\AstrayFX,"
+                ".\\reshade-shaders\\Shaders\\FXShaders,"
+                ".\\reshade-shaders\\Shaders\\SweetFX";
+      changed = true;
+    } else if (content.rfind("TextureSearchPaths=", 0) == 0 && content.size() > 6 &&
+               content.compare(content.size() - 6, 6, "\\**\\**") == 0) {
       content.resize(content.size() - 3);
       changed = true;
     }

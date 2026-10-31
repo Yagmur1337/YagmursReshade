@@ -129,6 +129,14 @@ void PrepareReShadeConfig()
     ini.Set("APP", "LoadOnlyEnabledEffects", "1");
     ini.Set("GENERAL", "LoadOnlyEnabledEffects", "1");
 
+    // Limit shader compilation search paths to the preset shader directories.
+    // This stops compiling 400+ unused heavy shaders (ray tracing, CRT, VR, etc.) that freeze the CPU and hang the game.
+    const std::string presetEffectPaths = ".\\reshade-shaders\\Shaders,"
+                                          ".\\reshade-shaders\\Shaders\\AstrayFX,"
+                                          ".\\reshade-shaders\\Shaders\\FXShaders,"
+                                          ".\\reshade-shaders\\Shaders\\SweetFX";
+    ini.Set("GENERAL", "EffectSearchPaths", presetEffectPaths);
+
     const std::filesystem::path cachePath = ExeDirectory() + L"IntermediateCache";
     std::error_code ec;
     std::filesystem::create_directories(cachePath, ec);
