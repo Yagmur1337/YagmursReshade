@@ -7,6 +7,10 @@
 
 #include <windows.h>
 #include <shlobj.h>
+#include <dxgi.h>
+#include <winrt/base.h>
+
+#pragma comment(lib, "dxgi.lib")
 
 #include <algorithm>
 #include <cstdio>
@@ -17,6 +21,21 @@
 
 namespace
 {
+UINT DetectGpuVendor()
+{
+    winrt::com_ptr<IDXGIFactory1> factory;
+    if (SUCCEEDED(CreateDXGIFactory1(__uuidof(IDXGIFactory1), factory.put_void())))
+    {
+        winrt::com_ptr<IDXGIAdapter1> adapter;
+        if (SUCCEEDED(factory->EnumAdapters1(0, adapter.put())))
+        {
+            DXGI_ADAPTER_DESC1 desc{};
+            if (SUCCEEDED(adapter->GetDesc1(&desc)))
+                return desc.VendorId;
+        }
+    }
+    return 0;
+}
 std::string Color(unsigned rgb, float alpha = 1.0f)
 {
     char text[64];
@@ -121,13 +140,39 @@ void PrepareReShadeConfig()
         if (kept != value)
             ini.Set("ADDON", "DisabledAddons", kept);
     }
+    const UINT vendorId = DetectGpuVendor();
+    const bool isNvidia = (vendorId == 0x10DE);
+
+    std::error_code fsEc;
+    const auto dlssFile = ExeDirectory() + L"renodx-dlss.addon64";
+    const auto dlssDisabled = ExeDirectory() + L"renodx-dlss.addon64.disabled";
+    if (!isNvidia)
+    {
+        // Non-NVIDIA GPUs (AMD Radeon, Intel, etc.) cannot run NVIDIA DLSS/NVNGX and will crash.
+        // Automatically disable renodx-dlss so all effects run stably on any GPU.
+        if (std::filesystem::exists(dlssFile))
+            std::filesystem::rename(dlssFile, dlssDisabled, fsEc);
+
+        std::string disabledList;
+        if (ini.Get("ADDON", "DisabledAddons", disabledList))
+        {
+            if (disabledList.find("renodx-dlss") == std::string::npos)
+                ini.Set("ADDON", "DisabledAddons", disabledList.empty() ? "renodx-dlss" : disabledList + ",renodx-dlss");
+        }
+        else
+        {
+            ini.Set("ADDON", "DisabledAddons", "renodx-dlss");
+        }
+    }
+    else
+    {
+        // On NVIDIA GPUs, restore DLSS addon if present.
+        if (std::filesystem::exists(dlssDisabled) && !std::filesystem::exists(dlssFile))
+            std::filesystem::rename(dlssDisabled, dlssFile, fsEc);
+    }
+
     if (!ini.Get("OVERLAY", "TutorialProgress", value) || value != "4")
         ini.Set("OVERLAY", "TutorialProgress", "4");
-
-    // Fast effect loading: only compile enabled effects for the active preset and cache compiled shaders on disk.
-    // This prevents compiling all 500+ effects on every start, eliminating UI freezes, FPS drops, and compilation crashes.
-    ini.Set("APP", "LoadOnlyEnabledEffects", "1");
-    ini.Set("GENERAL", "LoadOnlyEnabledEffects", "1");
 
     // Limit shader compilation search paths to the preset shader directories.
     // This stops compiling 400+ unused heavy shaders (ray tracing, CRT, VR, etc.) that freeze the CPU and hang the game.
@@ -136,6 +181,12 @@ void PrepareReShadeConfig()
                                           ".\\reshade-shaders\\Shaders\\FXShaders,"
                                           ".\\reshade-shaders\\Shaders\\SweetFX";
     ini.Set("GENERAL", "EffectSearchPaths", presetEffectPaths);
+
+    const std::string presetTexturePaths = ".\\reshade-shaders\\Textures,"
+                                           ".\\reshade-shaders\\Textures\\AstrayFX,"
+                                           ".\\reshade-shaders\\Textures\\FXShaders,"
+                                           ".\\reshade-shaders\\Textures\\SweetFX";
+    ini.Set("GENERAL", "TextureSearchPaths", presetTexturePaths);
 
     const std::filesystem::path cachePath = ExeDirectory() + L"IntermediateCache";
     std::error_code ec;

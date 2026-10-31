@@ -339,9 +339,11 @@ void FixReShadeIni(const fs::path &path, bool addPresetPath) {
                 ".\\reshade-shaders\\Shaders\\FXShaders,"
                 ".\\reshade-shaders\\Shaders\\SweetFX";
       changed = true;
-    } else if (content.rfind("TextureSearchPaths=", 0) == 0 && content.size() > 6 &&
-               content.compare(content.size() - 6, 6, "\\**\\**") == 0) {
-      content.resize(content.size() - 3);
+    } else if (content.rfind("TextureSearchPaths=", 0) == 0) {
+      content = "TextureSearchPaths=.\\reshade-shaders\\Textures,"
+                ".\\reshade-shaders\\Textures\\AstrayFX,"
+                ".\\reshade-shaders\\Textures\\FXShaders,"
+                ".\\reshade-shaders\\Textures\\SweetFX";
       changed = true;
     }
     result += content + ending;
